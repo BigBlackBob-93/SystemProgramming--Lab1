@@ -9,44 +9,38 @@ void Operation::set_lan(Lan lang) {
 }
 
 //basic mathematical operations
-int Operation::add(int a, int b) const {
+void Operation::add(int &a, int b) const {
     if (this->lan == A) {
-        int c = 0;
         __asm{
-                mov eax, a
+                mov esi, a
+                mov eax,[esi]
                 add eax, b
-                mov c, eax
+                mov[esi], eax
         }
-        return c;
-    }
-    return a + b;
+    } else a += b;
 }
 
-int Operation::sub(int a, int b) const {
+void Operation::sub(int &a, int b) const {
     if (this->lan == A) {
-        int c = 0;
         __asm{
-                mov eax, a
+                mov esi, a
+                mov eax,[esi]
                 sub eax, b
-                mov c, eax
+                mov[esi], eax
         }
-        return c;
-    }
-    return a - b;
+    } else a -= b;
 }
 
-int Operation::mul(int a, int b) const {
+void Operation::mul(int &a, int b) const {
     if (this->lan == A) {
-        int c = 0;
         __asm{
-                mov eax, a
+                mov esi, a
+                mov eax,[esi]
                 mov ebx, b
-                imul ebx   // using imul for signed numbers
-                mov c, eax
+                imul ebx                     // using imul for signed numbers
+                mov[esi], eax
         }
-        return c;
-    }
-    return a * b;
+    } else a *= b;
 }
 
 double Operation::div(int a, int b) const {
@@ -54,10 +48,10 @@ double Operation::div(int a, int b) const {
         int i = 0, j = 0;
         __asm{
                 mov eax, a
-                cdq         // extension EAX -> EDX:EAX
+                cdq                          // extension EAX -> EDX:EAX
                 mov ebx, b
-                idiv ebx    // using idiv for signed numbers
-                mov i, eax  // edx - remainder
+                idiv ebx                     // using idiv for signed numbers
+                mov i, eax                   // edx - remainder
                 mov j, edx
         }
         return (j / (b * 0.1)) * 0.1 + i;
@@ -184,48 +178,122 @@ bool Operation::comparison(int a, int b, std::string operation) {
 }
 
 //logical operations
-int Operation::logical(Type operation, int a, int b) {
-    int c = 0;
+void Operation::logical(Type operation, int &a, int b) {
+    __asm mov esi, a
     switch (operation) {
         case Not:
             __asm {
-                    mov eax, a
+                    mov eax,[esi]
                     not eax
             }
             break;
         case And:
             __asm{
-                    mov eax, a
+                    mov eax,[esi]
                     and eax, b
             }
             break;
         case Or:
             __asm{
-                    mov eax, a
+                    mov eax,[esi]
                     or eax, b
             }
             break;
         case Xor:
             __asm {
-                    mov eax, a
+                    mov eax,[esi]
                     xor eax, b
             }
             break;
         default:
             std::cout << "Wrong operation, choose: Not, And, Or, Xor";
     }
-    __asm mov c, eax
-    return c;
+    __asm mov[esi], eax
 }
+
 
 //array indexing
-int Operation::index(int *mass, int index) {
-    std::cout << mass;
-    return 0;
+int Operation::index(int *mass, int index) const {
+    if (this->lan == A) {
+        int s = sizeof(mass);
+        int c = 0;
+        __asm{
+                mov eax, s
+                mov ecx, index
+                mul ecx
+                mov ebx, mass
+                add ebx, eax
+                mov eax,[ebx]
+                mov c, eax
+        }
+        return c;
+    }
+    return mass[index];
 }
 
+// shift operations
+void Operation::logical_shift(int &a, int shift) {
+    if (shift < 0) {                         // left shift
+        int sh = ~shift + 1;
+        __asm{
+                mov ecx, sh
+                mov esi, a
+                mov eax,[esi]
+                shl eax, cl
+                mov[esi], eax
+        }
+    } else {                                 // right shift
+        __asm{
+                mov ecx, shift
+                mov esi, a
+                mov eax,[esi]
+                shr eax, cl
+                mov[esi], eax
+        }
+    }
+}
 
+void Operation::arithmetic_shift(int &a, int shift) {
+    if (shift < 0) {                         // left shift
+        int sh = ~shift + 1;
+        __asm{
+                mov ecx, sh
+                mov esi, a
+                mov eax,[esi]
+                sal eax, cl
+                mov[esi], eax
+        }
+    } else {                                 // right shift
+        __asm{
+                mov ecx, shift
+                mov esi, a
+                mov eax,[esi]
+                sar eax, cl
+                mov[esi], eax
+        }
+    }
+}
 
+void Operation::cyclic_shift(int &a, int shift) {
+    if (shift < 0) {                         // left shift
+        int sh = ~shift + 1;
+        __asm{
+                mov ecx, sh
+                mov esi, a
+                mov eax,[esi]
+                rol eax, cl
+                mov[esi], eax
+        }
+    } else {                                 // right shift
+        __asm{
+                mov ecx, shift
+                mov esi, a
+                mov eax,[esi]
+                ror eax, cl
+                mov[esi], eax
+        }
+    }
+}
 
 
 
